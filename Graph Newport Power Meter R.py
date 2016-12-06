@@ -190,9 +190,9 @@ def main():
     if file_save[0].lower() == "y":
         name = raw_input("Name of new data file (leaving blank appends to 'PowerMeasurement.txt'): ").strip()
         if name == "":
-            powerFile = open('..\\Power Measurement Files\\PowerMeasurement.txt', "a")
+            powerFile = open('C:\\Users\\User\\Desktop\\Power Measurement Files\\PowerMeasurement.txt', "a")
         else:
-            powerFile = open('..\\Power Measurement Files\\' + name + '.txt', "w")
+            powerFile = open('C:\\Users\\User\\Desktop\\Power Measurement Files\\' + name + '.txt', "w")
 
     #Running discrete sweep
     step_time = float(step_time)
@@ -265,20 +265,3 @@ def main():
     
 
 main()
-
-'''
-if aqOn:
-        aq.write('TSGL')
-        for i in range(int(duration * samples)):
-            sleep(1 / samples)
-            if ((i / samples) % step_time) > (.8 * step_time) and ((i / samples) % step_time) < (.9 * step_time):
-                measurement = opmr.query('D?')
-                if file_save == "y":
-                    powerFile.write(start_wv + int(i / samples) / int(step_time) + ' nm, ' + str(measurement))
-                if 'E' in measurement:
-                    m_list = measurement.split("E")
-                    measurement = float(m_list[0]) * (10 ** float(m_list[1]))
-                else:
-                    measurement = float(measurement)
-                plt.scatter(start_wv + int(i / samples) / int(step_time), measurement, c='blue')
-'''                
