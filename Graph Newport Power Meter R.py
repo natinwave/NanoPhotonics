@@ -183,8 +183,8 @@ def main():
         duration = float(duration)
 
     #samples per second for graph
-    samples = 20.0
-    file_save = raw_input("Do you want to save this data to a file? (y/n) ").strip()
+    samples = 1.0
+    file_save = raw_input("Do you want to save this data to a text file? (y/n) ").strip()
     if file_save == "":
         file_save = "n"
     if file_save[0].lower() == "y":
@@ -198,37 +198,55 @@ def main():
     step_time = float(step_time)
     start_wv = float(start_wv)
     total = start_time = end_time = 0
-    hit = False
-    average = total_valid = count_valid = 0
+    wl_change = hit = False
+    interval_timer = average = total_valid = count_valid = 0
     if aqOn:
-        print "\nStarting sweep."
+        print "\nRunning sweep."
         begin = time()
-        aq.write('TSGL')
+        #aq.write('TSGL')
         # For the length of the sweep times the number of samples. i occurs "samples" times per second
         for i in range(int(duration * samples)):
             start_time = time()
             measurement = opmr.query('D?')
+            
+            if (i / samples) % step_time == 0:
+                wavelength += float(wv_step)
+                aq.write("TFR " + '%.4f' % wavelength)
+                wl = str(wavelength)
+                wl_change = True
+                interval_timer = 0
+                opmr.write('W' + wl)
+            else:
+                wl_change = False
+                interval_timer += 1
+                
+            ###### Takes out scientific notation ######
             if 'E' in measurement:
                 m_list = measurement.split("E")
                 measurement = float(m_list[0]) * (10 ** float(m_list[1]))
             else:
                 measurement = float(measurement)
-            if ((i / samples) % step_time) > (.8 * step_time) and ((i / samples) % step_time) < (.9 * step_time):
+            ###########################################
+
+            #####
+            if (interval_timer / samples > .3 and interval_timer / samples < .9 and not wl_change):
                 hit = True
                 total_valid += measurement
                 count_valid += 1
-                plt.scatter(start_wv + (int(i / samples) / int(step_time)) * float(wv_step), measurement, c='blue')
+                plt.scatter(wl, measurement, c='blue', alpha='.1')
             else:
-                plt.scatter(start_wv + (int(i / samples) / int(step_time)) * float(wv_step), measurement, c='red', alpha='.05')
+                #plt.scatter(wl, measurement, c='red', alpha='.05')
                 #calculates the average after each group of valid points have been measured.
                 if (hit):
                     average = total_valid / count_valid
                     if file_save == "y":
-                        powerFile.write(str(start_wv + (int((i - 1) / samples) / int(step_time)) * float(wv_step)) + ' nm, ' + str(average))
+                        #powerFile.write(str(start_wv + (int((i - 1) / samples) / int(step_time)) * float(wv_step)) + ' nm, ' + str(average))
+                        powerFile.write(wl + ' nm, ' + str(average))
+                        plt.scatter(wl, average, c='green')
                     total_valid = count_valid = 0
-                    opmr.write('W' + str(start_wv + int((int((i - 1) / samples) / int(step_time)) * float(wv_step))))
+                    #opmr.write('W' + str(start_wv + int((int((i - 1) / samples) / int(step_time)) * float(wv_step))))
                     hit = False
-                        
+                    
             end_time = time()
             if (1/samples - end_time + start_time > 0):
                 sleep((1 / samples) - end_time + start_time)
