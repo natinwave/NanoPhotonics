@@ -174,16 +174,11 @@ def main():
             print "AQ laser source is not connected."
             break
 
-    duration = raw_input("How many seconds should this scan for? (Press Enter to calculate automatically)")
-    if duration == "":
-        sleep(.5)
-        duration = (float(end_wv) - float(start_wv) + float(wv_step)) * float(step_time) / float(wv_step)
-        print duration
-    else:
-        duration = float(duration)
+    duration = (float(end_wv) - float(start_wv) + float(wv_step)) * float(step_time) / float(wv_step)
+    print "This will scan for: " + str(duration) + " seconds."
 
     #samples per second for graph
-    samples = 1.0
+    samples = 20.0
     file_save = raw_input("Do you want to save this data to a text file? (y/n) ").strip()
     if file_save == "":
         file_save = "n"
@@ -196,7 +191,7 @@ def main():
 
     #Running discrete sweep
     step_time = float(step_time)
-    start_wv = float(start_wv)
+    wavelength = start_wv = float(start_wv)
     total = start_time = end_time = 0
     wl_change = hit = False
     interval_timer = average = total_valid = count_valid = 0
@@ -208,17 +203,20 @@ def main():
         for i in range(int(duration * samples)):
             start_time = time()
             measurement = opmr.query('D?')
-            
+
+            ##### Determines if wavelength should step up, increments interval timer #####
             if (i / samples) % step_time == 0:
                 wavelength += float(wv_step)
-                aq.write("TFR " + '%.4f' % wavelength)
+                aq.write("TFR" + '%.2f' % wavelength)
+                print "TFR" + str(wavelength)
                 wl = str(wavelength)
                 wl_change = True
-                interval_timer = 0
+                interval_timer = 0.0
                 opmr.write('W' + wl)
             else:
                 wl_change = False
                 interval_timer += 1
+            ##############################################################################
                 
             ###### Takes out scientific notation ######
             if 'E' in measurement:
@@ -228,25 +226,24 @@ def main():
                 measurement = float(measurement)
             ###########################################
 
-            #####
-            if (interval_timer / samples > .3 and interval_timer / samples < .9 and not wl_change):
+            ##### Checks if in valid range for data collection #####
+            if ((interval_timer / samples) > .3 and (interval_timer / samples) < .9):
                 hit = True
                 total_valid += measurement
                 count_valid += 1
                 plt.scatter(wl, measurement, c='blue', alpha='.1')
-            else:
-                #plt.scatter(wl, measurement, c='red', alpha='.05')
+            elif (hit):
                 #calculates the average after each group of valid points have been measured.
-                if (hit):
-                    average = total_valid / count_valid
-                    if file_save == "y":
-                        #powerFile.write(str(start_wv + (int((i - 1) / samples) / int(step_time)) * float(wv_step)) + ' nm, ' + str(average))
-                        powerFile.write(wl + ' nm, ' + str(average))
-                        plt.scatter(wl, average, c='green')
-                    total_valid = count_valid = 0
-                    #opmr.write('W' + str(start_wv + int((int((i - 1) / samples) / int(step_time)) * float(wv_step))))
-                    hit = False
-                    
+                average = total_valid / count_valid
+                if file_save == "y":
+                    #powerFile.write(str(start_wv + (int((i - 1) / samples) / int(step_time)) * float(wv_step)) + ' nm, ' + str(average))
+                    powerFile.write(wl + ' nm, ' + str(average))
+                plt.scatter(wl, average, c='green')
+                total_valid = count_valid = 0
+                #opmr.write('W' + str(start_wv + int((int((i - 1) / samples) / int(step_time)) * float(wv_step))))
+                hit = False
+            ########################################################
+            plt.scatter(start_wv + (i / (samples * step_time)), measurement, c='red', alpha='.2')
             end_time = time()
             if (1/samples - end_time + start_time > 0):
                 sleep((1 / samples) - end_time + start_time)
