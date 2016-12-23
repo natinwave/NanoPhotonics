@@ -8,26 +8,7 @@ from matplotlib.ticker import LinearLocator, FormatStrFormatter
 
 rm = visa.ResourceManager()
 resources = rm.list_resources()
-opmOn = True
-if 'GPIB0::4::INSTR' in resources:
-    opmr = rm.open_resource('GPIB0::4::INSTR')
-elif 'GPIB::4::INSTR' in resources:
-    opmr = rm.open_resource('GPIB::4::INSTR')
-else:
-    print "Please make sure the newport power meter is plugged in via GPIB and its address is set to '4.'"
-    sleep(4)
-    opmOn = False
-
-aqOn = True
-if 'GPIB0::20::INSTR' in resources:
-    aq = rm.open_resource('GPIB0::20::INSTR')
-elif 'GPIB::20::INSTR' in resources:
-    aq = rm.open_resource('GPIB::20::INSTR')
-elif 'ASRL1::INSTR' in resources:
-    aq = rm.open_resource('ASRL1::INSTR')
-else:
-    print "To get data that relates amplitude to frequency, please make sure the AQ4321A is plugged in via GPIB and its address is set to '20.'"
-    aqOn = False
+lwm = rm.open_resource("TCPIP0:10.4.27.204::inst0::INSTR")
 
 
 #validate functions make sure that the input from the user is in the correct bounds for the device, else it will show an error message giving the correct bounds.
@@ -126,8 +107,10 @@ def main():
 
     while(True):
         if aqOn:
-            dbm = aq.query("TPDB?").strip()
+            lwm.write("OUTP1:POW:UN DBM")
+            dbm = lwm.query("fetc1:pow?").strip()
             sleep(.1)
+            lwm.write("OUTP1:POW:UN WATT")
             mw = aq.query("TPMW?").strip()
             sleep(.1)
             wl = aq.query("TWL?").strip()
@@ -202,7 +185,7 @@ def main():
         # For the length of the sweep times the number of samples. i occurs "samples" times per second
         for i in range(int(duration * samples)):
             start_time = time()
-            measurement = opmr.query('D?')
+            measurement = lwm.query("fetc1:pow?").strip()
 
             ##### Determines if wavelength should step up, increments interval timer #####
             if (i / samples) % step_time == 0:
