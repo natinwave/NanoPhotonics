@@ -6,21 +6,41 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter
 
+lwmOn = False
 rm = visa.ResourceManager()
 resources = rm.list_resources()
-lwm = rm.open_resource("TCPIP0:10.4.27.204::inst0::INSTR")
-
+try:
+    lwm = rm.open_resource("TCPIP0::10.4.27.204::inst0::INSTR")
+    lwmOn = True
+except:
+    lwmOn = False
+inp = '*IDN?'
+typ = 'q'
+while(inp != ''):
+    if (typ == 'q'):
+        print lwm.query(inp)
+    elif (typ == 'w'):
+        print lwm.write(inp)
+    elif (typ == 'r'):
+        print lwm.read()
+    last = inp
+    inp = raw_input('command: ').strip()
+    typ = raw_input('type (q/w/r): ').strip()
+    if inp == '_':
+        inp = last
+    #print lwm.write("OUTP1:POW:UN DBM")
+    #print lwm.query("fetc1:pow?").strip()
 
 #validate functions make sure that the input from the user is in the correct bounds for the device, else it will show an error message giving the correct bounds.
 def validateWV(self, wavelength_in):
-    aq.write('TSTEPU0')    
+    #aq.write('TSTEPU0')    
     s = float(raw_input('Set fixed wavelength: '))
     if(s < 1480 or s > 1580):
         print "Error: please keep the wavelength between 1480.000 and 1580.000 nm."
 
     else:
-        aq.write("TWL " + '%.3f' % s)
-
+        #aq.write("TWL " + '%.3f' % s)
+        print ""
 
 def showHelp():
     print "Helpful Information: \
@@ -40,22 +60,25 @@ def validatePW():
         if(pIn < -20 or pIn > 8):
             print "Error: the power level must be between -20 dBm and 10 dBM."
         else:
-            aq.write("TPDB " + '%.1f' % pIn)
+            #aq.write("TPDB " + '%.1f' % pIn)
+            print ""
     if(uIn[0].lower() == "m"):
         if(pIn < .010 or pIn > 7.943):
             print "Error: the power level must be between .010 mW and 7.943 mW."
         else:
-            aq.write("TPMW " + '%.3f' % pIn)
+            #aq.write("TPMW " + '%.3f' % pIn)
+            print ""
     else:
         print "Error: the units must be in dBm or mW. Can be entered as 'd' or 'm.'"
 
 def validateFreq():
     fIn = float(raw_input("Set frequency (THz): "))
-    aq.write('TSTEPU1')
+    #aq.write('TSTEPU1')
     if fIn < 189.7421 or fIn > 202.5625:
         print "Error: the frequency must be between 189.7421 THz and 202.5625 THz."
     else:
-        aq.write("TFR " + '%.4f' % fIn)
+        #aq.write("TFR " + '%.4f' % fIn)
+        print ""
 
 def setStepSize():
     stepSize = raw_input("Step size (nm): ").strip()
@@ -64,7 +87,8 @@ def setStepSize():
     else:
         stepSize = float(stepSize)
     if (stepSize >= .001 and stepSize <= 100):
-        aq.write('TSTEWL' + '%.3f' % stepSize)
+        #aq.write('TSTEWL' + '%.3f' % stepSize)
+        print ""
     else:
         print "Error: discrete step time must be between 0.1 and 999.0 seconds."
 
@@ -77,9 +101,11 @@ def setStepTime():
         stepTime = float(stepTime)
     stepFlag = False
     if (stepTime == 0):
-        aq.write('TSWET ' + '%.2f' % contTime)
+        #aq.write('TSWET ' + '%.2f' % contTime)
+        print ""
     elif (stepTime > .01 and stepTime < 999):
-        aq.write('TSTET ' + '%.2f' % stepTime)
+        #aq.write('TSTET ' + '%.2f' % stepTime)
+        print ""
     else:
         print "Error: discrete step time must be between 0.1 and 999.0 seconds."
 
@@ -88,74 +114,73 @@ def setStartWV():
     if(start < 1480.000 or start > 1580.000):
         print "Error: value must be between 1480.000 and 1580.000 nm."
     else:
-        aq.write('TSTAWL ' + '%.3f' % start)
-        aq.write('WAIT0.1')
+        #aq.write('TSTAWL ' + '%.3f' % start)
+        #aq.write('WAIT0.1')
+        print ""
 
 def setEndWV():
     end = float(raw_input("End wavelength: "))
     if(end < 1480.000 or end > 1580.000):
         print "Error: value must be between 1480.000 and 1580.000 nm."
     else:
-        aq.write('TSTPWL ' + '%.3f' % end)
-        aq.write('WAIT0.1')
+        #aq.write('TSTPWL ' + '%.3f' % end)
+        #aq.write('WAIT0.1')
+        print ""
 
 def main():
-    if not opmOn:
+    if not lwmOn:
+        print "Please connect Lightwave Multimeter to the LAN network."
         return
     #Show current laser parameters
     step_time = start_wv = end_wv = freq = dbm = mw = wl = wv_step = 0
 
     while(True):
-        if aqOn:
-            lwm.write("OUTP1:POW:UN DBM")
-            dbm = lwm.query("fetc1:pow?").strip()
-            sleep(.1)
-            lwm.write("OUTP1:POW:UN WATT")
-            mw = aq.query("TPMW?").strip()
-            sleep(.1)
-            wl = aq.query("TWL?").strip()
-            sleep(.1)
-            freq = aq.query("TFR?").strip()
-            sleep(.1)
-            start_wv = aq.query("TSTAWL?").strip()
-            sleep(.1)
-            end_wv = aq.query("TSTPWL?").strip()
-            sleep(.1)
-            step_time = aq.query("TSTET?").strip()
-            sleep(.1)
-            wv_step = aq.query("TSTEWL?").strip()
+        lwm.write("OUTP1:POW:UN DBM")
+        dbm = lwm.query("fetc1:pow?").strip()
+        sleep(.1)
+        lwm.write("OUTP1:POW:UN WATT")
+        #mw = aq.query("TPMW?").strip()
+        sleep(.1)
+        #wl = aq.query("TWL?").strip()
+        sleep(.1)
+        #freq = aq.query("TFR?").strip()
+        sleep(.1)
+        #start_wv = aq.query("TSTAWL?").strip()
+        sleep(.1)
+        #end_wv = aq.query("TSTPWL?").strip()
+        sleep(.1)
+        #step_time = aq.query("TSTET?").strip()
+        sleep(.1)
+        #wv_step = aq.query("TSTEWL?").strip()
 
-            print "\nCURRENT AQ4321 PARAMETERS: "
-            print "Power: " + dbm + "dBm / " + mw + " mW"
-            print "Wavelength: " + wl + " nm"
-            print "Frequency: " + freq + " THz \n"
+        print "\nCURRENT LIGHTWAVE MULTIMETER PARAMETERS: "
+        print "Power: " + dbm + "dBm / " + mw + " mW"
+        print "Wavelength: " + wl + " nm"
+        print "Frequency: " + freq + " THz \n"
 
-            print "SWEEP SETTINGS:"
-            print "Start wavelength: " + start_wv + " nm"
-            print "End wavelength: " + end_wv + " nm"
-            print "Step time: " + step_time + " s"
-            print "Step size: " + wv_step + " nm \n"
+        print "SWEEP SETTINGS:"
+        print "Start wavelength: " + start_wv + " nm"
+        print "End wavelength: " + end_wv + " nm"
+        print "Step time: " + step_time + " s"
+        print "Step size: " + wv_step + " nm \n"
 
-            response = raw_input("Do you want to change any parameters? Press Enter to skip. (Power [p], Wavelength [w], Step Time [st], Step Size [ss], Start Wavelength [sw], End Wavelength [ew])").strip().lower()
-            if (response == ''):
-                break
-            elif (response[0] == 'p'):
-                validatePW()
-            elif (response[0] == 'w'):
-                validateWV()
-            elif (response[0] == 'f'):
-                validateFreq()
-            elif (response == 'st'):
-                setStepTime()
-            elif (response == 'ss'):
-                setStepSize()
-            elif (response == 'sw'):
-                setStartWV()
-            elif (response == 'ew'):
-                setEndWV()
-        else:
-            print "AQ laser source is not connected."
+        response = raw_input("Do you want to change any parameters? Press Enter to skip. (Power [p], Wavelength [w], Step Time [st], Step Size [ss], Start Wavelength [sw], End Wavelength [ew])").strip().lower()
+        if (response == ''):
             break
+        elif (response[0] == 'p'):
+            validatePW()
+        elif (response[0] == 'w'):
+            validateWV()
+        elif (response[0] == 'f'):
+            validateFreq()
+        elif (response == 'st'):
+            setStepTime()
+        elif (response == 'ss'):
+            setStepSize()
+        elif (response == 'sw'):
+            setStartWV()
+        elif (response == 'ew'):
+            setEndWV()
 
     duration = (float(end_wv) - float(start_wv) + float(wv_step)) * float(step_time) / float(wv_step)
     print "This will scan for: " + str(duration) + " seconds."
@@ -178,77 +203,62 @@ def main():
     total = start_time = end_time = 0
     wl_change = hit = False
     interval_timer = average = total_valid = count_valid = 0
-    if aqOn:
-        print "\nRunning sweep."
-        begin = time()
-        #aq.write('TSGL')
-        # For the length of the sweep times the number of samples. i occurs "samples" times per second
-        for i in range(int(duration * samples)):
-            start_time = time()
-            measurement = lwm.query("fetc1:pow?").strip()
+    print "\nRunning sweep."
+    begin = time()
+    #aq.write('TSGL')
+    # For the length of the sweep times the number of samples. i occurs "samples" times per second
+    for i in range(int(duration * samples)):
+        start_time = time()
+        measurement = lwm.query("fetc1:pow?").strip()
 
-            ##### Determines if wavelength should step up, increments interval timer #####
-            if (i / samples) % step_time == 0:
-                wavelength += float(wv_step)
-                aq.write("TFR" + '%.3f' % wavelength)
-                print "TFR" + str(wavelength)
-                sleep(.1)
-                wl = str(wavelength)
-                wl_change = True
-                interval_timer = 0.0
-                opmr.write('W' + wl)
-            else:
-                wl_change = False
-                interval_timer += 1
-            ##############################################################################
-                
-            ###### Takes out scientific notation ######
-            if 'E' in measurement:
-                m_list = measurement.split("E")
-                measurement = float(m_list[0]) * (10 ** float(m_list[1]))
-            else:
-                measurement = float(measurement)
-            ###########################################
+        ##### Determines if wavelength should step up, increments interval timer #####
+        if (i / samples) % step_time == 0:
+            wavelength += float(wv_step)
+            #aq.write("TFR" + '%.3f' % wavelength)
+            print "TFR" + str(wavelength)
+            sleep(.1)
+            wl = str(wavelength)
+            wl_change = True
+            interval_timer = 0.0
+            #opmr.write('W' + wl)
+        else:
+            wl_change = False
+            interval_timer += 1
+        ##############################################################################
 
-            ##### Checks if in valid range for data collection #####
-            if ((interval_timer / samples) > .3 and (interval_timer / samples) < .9):
-                hit = True
-                total_valid += measurement
-                count_valid += 1
-                plt.scatter(wl, measurement, c='blue', alpha='.1')
-            elif (hit):
-                #calculates the average after each group of valid points have been measured.
-                average = total_valid / count_valid
-                if file_save == "y":
-                    #powerFile.write(str(start_wv + (int((i - 1) / samples) / int(step_time)) * float(wv_step)) + ' nm, ' + str(average))
-                    powerFile.write(wl + ' nm, ' + str(average))
-                plt.scatter(wl, average, c='green')
-                total_valid = count_valid = 0
-                #opmr.write('W' + str(start_wv + int((int((i - 1) / samples) / int(step_time)) * float(wv_step))))
-                hit = False
-            ########################################################
-            plt.scatter(start_wv + (i / (samples * step_time)), measurement, c='red', alpha='.2')
-            end_time = time()
-            if (1/samples - end_time + start_time > 0):
-                sleep((1 / samples) - end_time + start_time)
-                total += ((1 / samples) - end_time + start_time)
-        end = time()
-        print "total time: " + str(end - begin)
-        print "total slept: " + str(total)
-    else:
-        for i in range(int(duration * samples)):
-            sleep(1 / samples - end_time + start_time)
-            start_time = time()
-            measurement = opmr.query('D?')
+        ###### Takes out scientific notation ######
+        if 'E' in measurement:
+            m_list = measurement.split("E")
+            measurement = float(m_list[0]) * (10 ** float(m_list[1]))
+        else:
+            measurement = float(measurement)
+        ###########################################
+
+        ##### Checks if in valid range for data collection #####
+        if ((interval_timer / samples) > .3 and (interval_timer / samples) < .9):
+            hit = True
+            total_valid += measurement
+            count_valid += 1
+            plt.scatter(wl, measurement, c='blue', alpha='.1')
+        elif (hit):
+            #calculates the average after each group of valid points have been measured.
+            average = total_valid / count_valid
             if file_save == "y":
-                powerFile.write(str(i / samples) + ' nm, ' + str(measurement))
-            if 'E' in measurement:
-                m_list = measurement.split("E")
-                measurement = float(m_list[0]) * (10 ** float(m_list[1]))
-            else:
-                measurement = float(measurement)
-            plt.scatter((i / samples), measurement, c='blue')
-            end_time = time()
+                #powerFile.write(str(start_wv + (int((i - 1) / samples) / int(step_time)) * float(wv_step)) + ' nm, ' + str(average))
+                powerFile.write(wl + ' nm, ' + str(average))
+            plt.scatter(wl, average, c='green')
+            total_valid = count_valid = 0
+            #opmr.write('W' + str(start_wv + int((int((i - 1) / samples) / int(step_time)) * float(wv_step))))
+            hit = False
+        ########################################################
+        plt.scatter(start_wv + (i / (samples * step_time)), measurement, c='red', alpha='.2')
+        end_time = time()
+        if (1/samples - end_time + start_time > 0):
+            sleep((1 / samples) - end_time + start_time)
+            total += ((1 / samples) - end_time + start_time)
+    end = time()
+    print "total time: " + str(end - begin)
+    print "total slept: " + str(total)
 
     if file_save == "y":
         powerFile.close()
@@ -256,11 +266,10 @@ def main():
     plt.xlabel('wavelength (nm)')
     plt.ylabel('amplitude (units on power meter)')
     plt.grid(True)
-    opmr.close()
-    if aqOn: aq.close()
+    if lwmOn: lwm.close()
     print "Finished!"
     plt.show()
     plt.close()
-    
 
-main()
+#main()
+if lwmOn: lwm.close()
