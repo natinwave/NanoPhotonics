@@ -29,7 +29,6 @@ else:
     print "To get data that relates amplitude to frequency, please make sure the AQ4321A is plugged in via GPIB and its address is set to '20.'"
     aqOn = False
 
-
 #validate functions make sure that the input from the user is in the correct bounds for the device, else it will show an error message giving the correct bounds.
 def validateWV(self, wavelength_in):
     aq.write('TSTEPU0')    
@@ -39,7 +38,6 @@ def validateWV(self, wavelength_in):
 
     else:
         aq.write("TWL " + '%.3f' % s)
-
 
 def showHelp():
     print "Helpful Information: \
