@@ -125,10 +125,11 @@ class gpibMain():
             tkMessageBox.showinfo("Error", "The Spectrum Analyzer is not connected")
 
     def gotoLM(self):
-        address = findAddress('*IDN?', 'Agilent Technologies,8163B,DE48204524,V5.04(63796)', 'GPIB')
-        lm = rm.open_resource('GPIB0::19::INSTR')
-        print(lm.query('*IDN?'))
-        if(address !=''):
+        #address = findAddress('*IDN?', 'Agilent Technologies,8163B,DE48204524,V5.04(63796)', 'GPIB')
+        address = 'TCPIP0::10.4.27.204::inst0::INSTR'
+        #lm = rm.open_resource('TCPIP0::10.4.27.204::inst0::INSTR')
+        #print(lm.query('*IDN?'))
+        if(address != ''):
             global lmOn, lm
             lmOn = True
             lm = rm.open_resource(address)
