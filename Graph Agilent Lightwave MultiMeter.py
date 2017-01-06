@@ -16,6 +16,7 @@ except:
     lwmOn = False
 inp = '*IDN?'
 typ = 'q'
+lwm.timeout = None
 while(inp != ''):
     if (typ == 'q'):
         print lwm.query(inp)
@@ -70,13 +71,13 @@ def validatePW(): # Ask user for new power level. ##############################
     
     powerLevel = float(raw_input('Set power level: '))
     if(powerUnits[0] == 'd'):
-        lwm.write('sens1:pow:unit 0')
+        lwm.write('sour2:pow:unit 0')
         if(powerLevel < 5.999 or powerLevel > 14.771):
             print 'The power level must be between 5.999 and 14.771 dbm, inclusive.'
         else:
             lwm.write('sour2:pow ' + str(powerLevel))
     elif(powerUnits[0] == 'w'):
-        lwm.write('sens1:pow:unit 1')
+        lwm.write('sour2:pow:unit 1')
         if (powerLevel < .00398 or powerLevel > .03):
             print 'The power level must be between .00398 and .03 watts'
         else:
@@ -128,7 +129,7 @@ def setStartWV():
     if(start < 1463.000 or start > 1577.000):
         print "Error: value must be between 1463.000 and 1577.000 nm."
     else:
-        lwm.query("sour2:wav:swe:star " + '%.3f' % start).strip()
+        lwm.write("sour2:wav:swe:star " + '%.3f' % start + 'NM')
 
 
 def setEndWV():
@@ -136,7 +137,7 @@ def setEndWV():
     if(end < 1480.000 or end > 1580.000):
         print "Error: value must be between 1480.000 and 1580.000 nm."
     else:
-        lwm.query("sour2:wav:swe:stop " + '%.3f' % end).strip()
+        lwm.write("sour2:wav:swe:stop " + '%.3f' % end + 'NM')
 
 ###### Takes out scientific notation ######
 def filterEE(measurement):
@@ -146,18 +147,25 @@ def filterEE(measurement):
     else:
         return float(measurement)
 
+def setSample():
+    title = raw_input('Please enter the sample used : ').strip()
+    plt.title('' + str(title))
+    return title
+    
+
 def main():
     if not lwmOn:
         print "Please connect Lightwave Multimeter to the LAN network and try again."
         return
     #Show current laser parameters
     step_time = start_wv = end_wv = freq = dbm = mw = wl = wv_step = 0
+    title = 'Unknown' 
 
     while(True):
-        lwm.write('sour2:pow:unit DBM')
-        dbm = lwm.query("sour2:pow?").strip()
+        lwm.write('sour2:pow:unit 0')
+        dbm = lwm.query('sour2:pow?').strip()
         sleep(.1)
-        lwm.write("sour2:pow:unit W")
+        lwm.write('sour2:pow:unit 1')
         mw = lwm.query("sour2:pow?").strip()
         sleep(.1)
         wl = str(filterEE(lwm.query('sour2:wav?').strip())*1000000000)
@@ -182,8 +190,10 @@ def main():
         print "End wavelength: " + end_wv + " nm"
         print "Step time: " + str(step_time) + " s"
         print "Step size: " + wv_step + " nm \n"
+        print "Sample : " + title
+        
 
-        response = raw_input("Do you want to change any parameters? Press Enter to skip. (Power [p], Wavelength [w], Step Time [st], Step Size [ss], Start Wavelength [sw], End Wavelength [ew])").strip().lower()
+        response = raw_input("Do you want to change any parameters? Press Enter to skip. (Power [p], Wavelength [w], Step Time [st], Step Size [ss], Start Wavelength [sw], End Wavelength [ew], Sample [s])").strip().lower()
         if (response == ''):
             break
         elif (response[0] == 'p'):
@@ -200,6 +210,8 @@ def main():
             setStartWV()
         elif (response == 'ew'):
             setEndWV()
+        elif ( response == 's'):
+            title = setSample()
 
     duration = (float(end_wv) - float(start_wv) + float(wv_step)) * float(step_time) / float(wv_step)
     print "This will scan for: " + str(duration) + " seconds."
@@ -226,15 +238,15 @@ def main():
     #wl_change = hit = False
     interval_timer = average = total_valid = count_valid = 0
 
-    lwm.write('sour2:wav:swe:mode MAN')
+    #lwm.write('sour2:wav:swe:mode MAN')
     
-    check_params = lwm.query('sour2:wav:swe:chec?')
-    print check_params
-    if (check_params.strip() != '0,OK'):
-        trash = raw_input("Params are unacceptable, program will restart now. Press Enter.")
-        print '\n\n\n'
-        main()
-        return
+    #check_params = lwm.query('sour2:wav:swe:chec?')
+    #print check_params
+    #if (check_params.strip() != '0,OK'):
+    #    trash = raw_input("Params are unacceptable, program will restart now. Press Enter.")
+    #    print '\n\n\n'
+    #    main()
+    #    return
     
         
     print "\nRunning sweep."
@@ -242,13 +254,14 @@ def main():
     lwm.write('source2:pow:state 1')
     sleep(5)
     #lwm.write('sour2:pow 230 uW')
-    lwm.write('sour2:wav:swe STAR')
+    #lwm.write('sour2:wav:swe STAR')
     sleep(.3)
     # Increments each wavelength step.
-    for i in range(int((end_wv - start_wv)/wv_step)):
+    for i in range(int((end_wv - start_wv)/wv_step)+1):
         print i
-        print 'made it to the top'
+        #print 'made it to the top'
         lwm.write('sour2:wav ' + str(wavelength) + 'NM')
+        lwm.write('sens1:pow:wav ' + str(wavelength) + 'NM')
         num = lwm.query_ascii_values('fetch1:pow?')
         wavelength += wv_step     
     
@@ -257,7 +270,9 @@ def main():
 
         measurement = filterEE(measurement)
         plt.scatter(start_wv + wv_step * i, measurement, c='blue', alpha='.5')
-        sleep(1)
+        if file_save == "y":
+            powerFile.write(str(start_wv + wv_step * i) + ' nm, ' + str(measurement) + '\n')
+        sleep(step_time)
 
         ##### Determines if wavelength should step up, increments interval timer #####
         #if (i / samples) % step_time == 0:
@@ -296,11 +311,13 @@ def main():
 
     plt.xlabel('wavelength (nm)')
     plt.ylabel('amplitude (units on power meter)')
+    
     plt.grid(True)
     if lwmOn: lwm.close()
     print "Finished!"
     plt.show()
     plt.close()
+    #lwm.write('sour2:wav:swe STOP')
 
 main()
 if lwmOn: lwm.close()
