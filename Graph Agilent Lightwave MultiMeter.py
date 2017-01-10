@@ -240,28 +240,31 @@ def main():
 
     #lwm.write('sour2:wav:swe:mode MAN')
     
-    #check_params = lwm.query('sour2:wav:swe:chec?')
-    #print check_params
-    #if (check_params.strip() != '0,OK'):
-    #    trash = raw_input("Params are unacceptable, program will restart now. Press Enter.")
-    #    print '\n\n\n'
-    #    main()
-    #    return
+    check_params = lwm.query('sour2:wav:swe:chec?')
+    print check_params
+    if (check_params.strip() != '0,OK'):
+        trash = raw_input("Params are unacceptable, program will restart now. Press Enter.")
+        print '\n\n\n'
+        main()
+        return
     
         
     print "\nRunning sweep."
     lwm.write('source2:chan1:pow:state 1')
     lwm.write('source2:pow:state 1')
+    lwm.write('sour2:wav ' + str(wavelength) + 'NM')
+    lwm.write('sens1:pow:wav ' + str(wavelength) + 'NM')
     sleep(5)
     #lwm.write('sour2:pow 230 uW')
     #lwm.write('sour2:wav:swe STAR')
     sleep(.3)
-    # Increments each wavelength step.
+    # Increments each wavelength step. ###################
     for i in range(int((end_wv - start_wv)/wv_step)+1):
         print i
         #print 'made it to the top'
         lwm.write('sour2:wav ' + str(wavelength) + 'NM')
         lwm.write('sens1:pow:wav ' + str(wavelength) + 'NM')
+        sleep(step_time)
         num = lwm.query_ascii_values('fetch1:pow?')
         wavelength += wv_step     
     
@@ -272,39 +275,8 @@ def main():
         plt.scatter(start_wv + wv_step * i, measurement, c='blue', alpha='.5')
         if file_save == "y":
             powerFile.write(str(start_wv + wv_step * i) + ' nm, ' + str(measurement) + '\n')
-        sleep(step_time)
-
-        ##### Determines if wavelength should step up, increments interval timer #####
-        #if (i / samples) % step_time == 0:
-        #    wavelength += float(wv_step)
-        #    #aq.write("TFR" + '%.3f' % wavelength)
-        #    print "TFR" + str(wavelength)
-        #    wl = str(wavelength)
-        #    wl_change = True
-        #    interval_timer = 0.0
-        #    #opmr.write('W' + wl)
-        #else:
-        #    wl_change = False
-        #    interval_timer += 1
-        ##############################################################################
-
-        ##### Checks if in valid range for data collection #####
-        #if ((interval_timer / samples) > .3 and (interval_timer / samples) < .9):
-        #    hit = True
-        #    total_valid += measurement
-        #    count_valid += 1
-        #    plt.scatter(wl, measurement, c='blue', alpha='.1')
-        #elif (hit):
-        #    #calculates the average after each group of valid points have been measured.
-        #    average = total_valid / count_valid
-        #    if file_save == "y":
-        #        #powerFile.write(str(start_wv + (int((i - 1) / samples) / int(step_time)) * float(wv_step)) + ' nm, ' + str(average))
-        #        powerFile.write(wl + ' nm, ' + str(average))
-        #    plt.scatter(wl, average, c='green')
-        #    total_valid = count_valid = 0
-        #    #opmr.write('W' + str(start_wv + int((int((i - 1) / samples) / int(step_time)) * float(wv_step))))
-        #    hit = False
-        ########################################################
+        
+    ######################################################
 
     if file_save == "y":
         powerFile.close()
