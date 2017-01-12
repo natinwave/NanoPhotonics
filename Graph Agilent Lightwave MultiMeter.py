@@ -1,36 +1,12 @@
 import visa
+#import dataAverage
+#import Transmission_Ratio_From_Power_Data
 from time import sleep
 from time import time
 from math import*
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter
-
-lwmOn = False
-rm = visa.ResourceManager()
-resources = rm.list_resources()
-try:
-    lwm = rm.open_resource("TCPIP0::10.4.27.204::inst0::INSTR")
-    lwmOn = True
-except:
-    lwmOn = False
-inp = '*IDN?'
-typ = 'q'
-lwm.timeout = None
-while(inp != ''):
-    if (typ == 'q'):
-        print lwm.query(inp)
-    elif (typ == 'w'):
-        print lwm.write(inp)
-    elif (typ == 'r'):
-        print lwm.read()
-    last = inp
-    inp = raw_input('command: ').strip()
-    typ = raw_input('type (q/w/r): ').strip()
-    if inp == '_':
-        inp = last
-    #print lwm.write("OUTP1:POW:UN DBM")
-    #print lwm.query("fetc1:pow?").strip()
 
 def laserOnOff(lOn):
     status = lOn[0]
@@ -153,10 +129,33 @@ def setSample():
     return title
     
 
-def main():
-    if not lwmOn:
+def main(paramList):
+    lwmOn = False
+    rm = visa.ResourceManager()
+    resources = rm.list_resources()
+    try:
+        lwm = rm.open_resource("TCPIP0::10.4.27.204::inst0::INSTR")
+        lwmOn = True
+    except:
+        lwmOn = False
         print "Please connect Lightwave Multimeter to the LAN network and try again."
         return
+    inp = '*IDN?'
+    typ = 'q'
+    lwm.timeout = None
+    while(inp != ''):
+        if (typ == 'q'):
+            print lwm.query(inp)
+        elif (typ == 'w'):
+            print lwm.write(inp)
+        elif (typ == 'r'):
+            print lwm.read()
+        last = inp
+        inp = raw_input('command: ').strip()
+        typ = raw_input('type (q/w/r): ').strip()
+        if inp == '_':
+            inp = last
+
     #Show current laser parameters
     step_time = start_wv = end_wv = freq = dbm = mw = wl = wv_step = 0
     title = 'Unknown' 
@@ -219,11 +218,11 @@ def main():
     ########## Asks about saving to text file. ########################################
     file_save = raw_input("Do you want to save this data to a text file? (y/n) ").strip()
     if file_save == "":
-        file_save = "n"
+        file_save = "y"
     if file_save[0].lower() == "y":
-        name = raw_input("Name of new data file (leaving blank appends to 'PowerMeasurement.txt'): ").strip()
+        name = raw_input("Name of new data file (leaving blank creates name automatically): ").strip()
         if name == "":
-            powerFile = open('C:\\Users\\User\\Desktop\\Power Measurement Files\\PowerMeasurement.txt', "a")
+            powerFile = open('C:\\Users\\User\\Desktop\\Power Measurement Files\\' + title + '_' + start_wv + '-' + end_wv + '_@' + '%.3f' % filterEE(dbm) + 'dBm.txt', "a")
         else:
             powerFile = open('C:\\Users\\User\\Desktop\\Power Measurement Files\\' + name + '.txt', "w")
     ###################################################################################
@@ -255,13 +254,9 @@ def main():
     lwm.write('sour2:wav ' + str(wavelength) + 'NM')
     lwm.write('sens1:pow:wav ' + str(wavelength) + 'NM')
     sleep(5)
-    #lwm.write('sour2:pow 230 uW')
-    #lwm.write('sour2:wav:swe STAR')
-    sleep(.3)
     # Increments each wavelength step. ###################
     for i in range(int((end_wv - start_wv)/wv_step)+1):
-        print i
-        #print 'made it to the top'
+        print wavelength
         lwm.write('sour2:wav ' + str(wavelength) + 'NM')
         lwm.write('sens1:pow:wav ' + str(wavelength) + 'NM')
         sleep(step_time)
@@ -269,7 +264,6 @@ def main():
         wavelength += wv_step     
     
         measurement = str(num[0])
-
 
         measurement = filterEE(measurement)
         plt.scatter(start_wv + wv_step * i, measurement, c='blue', alpha='.5')
@@ -282,14 +276,13 @@ def main():
         powerFile.close()
 
     plt.xlabel('wavelength (nm)')
-    plt.ylabel('amplitude (units on power meter)')
+    plt.ylabel('amplitude (mW)')
     
     plt.grid(True)
     if lwmOn: lwm.close()
     print "Finished!"
     plt.show()
     plt.close()
-    #lwm.write('sour2:wav:swe STOP')
 
-main()
+main([''])
 if lwmOn: lwm.close()
