@@ -7,7 +7,15 @@ from math import*
 import matplotlib.pyplot as plt
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter
-
+lwmOn = False
+rm = visa.ResourceManager()
+resources = rm.list_resources()
+try:
+    lwm = rm.open_resource("TCPIP0::10.4.27.204::inst0::INSTR")
+    lwmOn = True
+except:
+    lwmOn = False
+    print "Please connect Lightwave Multimeter to the LAN network and try again."
 def laserOnOff(lOn):
     status = lOn[0]
     if(status != '1' and status != '0'):
@@ -110,8 +118,8 @@ def setStartWV():
 
 def setEndWV():
     end = float(raw_input("End wavelength: "))
-    if(end < 1480.000 or end > 1580.000):
-        print "Error: value must be between 1480.000 and 1580.000 nm."
+    if(end < 1463.000 or end > 1577.000):
+        print "Error: value must be between 1463.000 and 1577.000 nm."
     else:
         lwm.write("sour2:wav:swe:stop " + '%.3f' % end + 'NM')
 
@@ -127,23 +135,21 @@ def setSample():
     title = raw_input('Please enter the sample used : ').strip()
     plt.title('' + str(title))
     return title
-    
+def runMultipleTimes():
+    count = int(raw_input('Please enter the amount of times to run this configuration : ').strip())
+    if (count == 0 or count < 0):
+        print "Error: count must be greater than 0"
+    else:
+        return count
+ 
 
 def main(paramList):
-    lwmOn = False
-    rm = visa.ResourceManager()
-    resources = rm.list_resources()
-    try:
-        lwm = rm.open_resource("TCPIP0::10.4.27.204::inst0::INSTR")
-        lwmOn = True
-    except:
-        lwmOn = False
-        print "Please connect Lightwave Multimeter to the LAN network and try again."
-        return
+    
     inp = '*IDN?'
     typ = 'q'
     lwm.timeout = None
     while(inp != ''):
+        
         if (typ == 'q'):
             print lwm.query(inp)
         elif (typ == 'w'):
@@ -158,7 +164,8 @@ def main(paramList):
 
     #Show current laser parameters
     step_time = start_wv = end_wv = freq = dbm = mw = wl = wv_step = 0
-    title = 'Unknown' 
+    title = 'Unknown'
+    count = 1
 
     while(True):
         lwm.write('sour2:pow:unit 0')
@@ -176,6 +183,8 @@ def main(paramList):
         end_wv = str(filterEE(lwm.query("sour2:wav:swe:stop?").strip())*1000000000)
         sleep(.1)
         step_time = 1 #default step time
+        
+        
         sleep(.1)
         wv_step = str(filterEE(lwm.query("sour2:wav:swe:step?").strip())*1000000000)
 
@@ -190,9 +199,11 @@ def main(paramList):
         print "Step time: " + str(step_time) + " s"
         print "Step size: " + wv_step + " nm \n"
         print "Sample : " + title
+        print "Number of runs : " + str(count)
+        
         
 
-        response = raw_input("Do you want to change any parameters? Press Enter to skip. (Power [p], Wavelength [w], Step Time [st], Step Size [ss], Start Wavelength [sw], End Wavelength [ew], Sample [s])").strip().lower()
+        response = raw_input("Do you want to change any parameters? Press Enter to skip. (Power [p], Wavelength [w], Step Time [st], Step Size [ss], Start Wavelength [sw], End Wavelength [ew], Sample [s]), Multiple Runs [m] ").strip().lower()
         if (response == ''):
             break
         elif (response[0] == 'p'):
@@ -211,78 +222,163 @@ def main(paramList):
             setEndWV()
         elif ( response == 's'):
             title = setSample()
+        elif(response == 'm'):
+            count = runMultipleTimes()
 
     duration = (float(end_wv) - float(start_wv) + float(wv_step)) * float(step_time) / float(wv_step)
     print "This will scan for: " + str(duration) + " seconds."
+    if count == 1:
+        ########## Asks about saving to text file. ########################################
+        file_save = raw_input("Do you want to save this data to a text file? (y/n) ").strip()
+        if file_save == "":
+            file_save = "y"
+        if file_save[0].lower() == "y":
+            name = raw_input("Name of new data file (leaving blank creates name automatically): ").strip()
+            if name == "":
+                powerFile = open('C:\\Users\\User\\Desktop\\Power Measurement Files\\' + title + '_' + start_wv + '-' + end_wv + '_@' + '%.3f' % filterEE(dbm) + 'dBm.txt', "a")
+            else:
+                powerFile = open('C:\\Users\\User\\Desktop\\Power Measurement Files\\' + name + '.txt', "w")
+        ###################################################################################
 
-    ########## Asks about saving to text file. ########################################
-    file_save = raw_input("Do you want to save this data to a text file? (y/n) ").strip()
-    if file_save == "":
-        file_save = "y"
-    if file_save[0].lower() == "y":
-        name = raw_input("Name of new data file (leaving blank creates name automatically): ").strip()
-        if name == "":
-            powerFile = open('C:\\Users\\User\\Desktop\\Power Measurement Files\\' + title + '_' + start_wv + '-' + end_wv + '_@' + '%.3f' % filterEE(dbm) + 'dBm.txt', "a")
-        else:
-            powerFile = open('C:\\Users\\User\\Desktop\\Power Measurement Files\\' + name + '.txt', "w")
-    ###################################################################################
+        #Running discrete sweep
+        step_time = float(step_time)
+        wavelength = start_wv = float(start_wv)
+        wv_step = float(wv_step)
+        end_wv = float(end_wv)
+        wlList = []
+        #total = start_time = end_time = 0
+        #wl_change = hit = False
+        interval_timer = average = total_valid = count_valid = 0
 
-    #Running discrete sweep
-    step_time = float(step_time)
-    wavelength = start_wv = float(start_wv)
-    wv_step = float(wv_step)
-    end_wv = float(end_wv)
-    wlList = []
-    #total = start_time = end_time = 0
-    #wl_change = hit = False
-    interval_timer = average = total_valid = count_valid = 0
-
-    #lwm.write('sour2:wav:swe:mode MAN')
-    
-    check_params = lwm.query('sour2:wav:swe:chec?')
-    print check_params
-    if (check_params.strip() != '0,OK'):
-        trash = raw_input("Params are unacceptable, program will restart now. Press Enter.")
-        print '\n\n\n'
-        main()
-        return
-    
+        check_params = lwm.query('sour2:wav:swe:chec?')
+        print check_params
+        if (check_params.strip() != '0,OK'):
+            trash = raw_input("Params are unacceptable, program will restart now. Press Enter.")
+            print '\n\n\n'
+            main()
+            return
         
-    print "\nRunning sweep."
-    lwm.write('source2:chan1:pow:state 1')
-    lwm.write('source2:pow:state 1')
-    lwm.write('sour2:wav ' + str(wavelength) + 'NM')
-    lwm.write('sens1:pow:wav ' + str(wavelength) + 'NM')
-    sleep(5)
-    # Increments each wavelength step. ###################
-    for i in range(int((end_wv - start_wv)/wv_step)+1):
-        print wavelength
+
+        print "\nRunning sweep."
+        lwm.write('source2:chan1:pow:state 1')
+        lwm.write('source2:pow:state 1')
         lwm.write('sour2:wav ' + str(wavelength) + 'NM')
         lwm.write('sens1:pow:wav ' + str(wavelength) + 'NM')
-        sleep(step_time)
-        num = lwm.query_ascii_values('fetch1:pow?')
-        wavelength += wv_step     
-    
-        measurement = str(num[0])
-
-        measurement = filterEE(measurement)
-        plt.scatter(start_wv + wv_step * i, measurement, c='blue', alpha='.5')
-        if file_save == "y":
-            powerFile.write(str(start_wv + wv_step * i) + ' nm, ' + str(measurement) + '\n')
+        sleep(5)
+        # Increments each wavelength step. ###################
+        for i in range(int((end_wv - start_wv)/wv_step)+1):
+            print wavelength
+            lwm.write('sour2:wav ' + str(wavelength) + 'NM')
+            lwm.write('sens1:pow:wav ' + str(wavelength) + 'NM')
+            sleep(step_time)
+            num = lwm.query_ascii_values('fetch1:pow?')
+            wavelength += wv_step     
         
-    ######################################################
+            measurement = str(num[0])
 
-    if file_save == "y":
-        powerFile.close()
+            measurement = filterEE(measurement)
+            plt.scatter(start_wv + wv_step * i, measurement, c='blue', alpha='.5')
+            if file_save == "y":
+                powerFile.write(str(start_wv + wv_step * i) + ' nm, ' + str(measurement) + '\n')
+            
+        ######################################################
 
-    plt.xlabel('wavelength (nm)')
-    plt.ylabel('amplitude (mW)')
-    
-    plt.grid(True)
-    if lwmOn: lwm.close()
-    print "Finished!"
-    plt.show()
-    plt.close()
+        if file_save == "y":
+            powerFile.close()
 
+        plt.xlabel('wavelength (nm)')
+        plt.ylabel('amplitude (mW)')
+        
+        plt.grid(True)
+        if lwmOn: lwm.close()
+        print "Finished!"
+        plt.show()
+        plt.close()
+    if count != 1:
+        u=0
+        counter = 1
+        for u in range(count):
+            print ' counter' + str(counter)
+            #Running discrete sweep
+            step_time = float(step_time)
+            wavelength = start_wv = float(start_wv)
+            wv_step = float(wv_step)
+            end_wv = float(end_wv)
+            wlList = []
+            #total = start_time = end_time = 0
+            #wl_change = hit = False
+            interval_timer = average = total_valid = count_valid = 0
+            
+            
+            powerFile = open('C:\\Users\\User\\Desktop\\Power Measurement Files\\' + str(title) + '_'  + str(counter) + '_' + str(start_wv) + '-' + str(end_wv) + '_@' + '%.3f' % filterEE(dbm) + 'dBm.txt', "w")
+            
+            check_params = lwm.query('sour2:wav:swe:chec?')
+            print check_params
+            if (check_params.strip() != '0,OK'):
+                trash = raw_input("Params are unacceptable, program will restart now. Press Enter.")
+                print '\n\n\n'
+                main()
+                return
+            print "\nRunning sweep."
+
+            lwm.write('source2:chan1:pow:state 1')
+            lwm.write('source2:pow:state 1')
+            lwm.write('sour2:wav ' + str(wavelength) + 'NM')
+            lwm.write('sens1:pow:wav ' + str(wavelength) + 'NM')
+            sleep(5)
+            # Increments each wavelength step. ###################
+            k=0
+            for k in range(int((end_wv - start_wv)/wv_step)+1):
+                print wavelength
+                lwm.write('sour2:wav ' + str(wavelength) + 'NM')
+                lwm.write('sens1:pow:wav ' + str(wavelength) + 'NM')
+                sleep(step_time)
+                num = lwm.query_ascii_values('fetch1:pow?')
+                wavelength += wv_step     
+        
+                measurement = str(num[0])
+
+                measurement = filterEE(measurement)
+                powerFile.write(str(start_wv + wv_step * k) + ' nm, ' + str(measurement) + '\n')
+            counter +=1
+            powerFile.close()
+        check = raw_input('Would you like to average the files? y/n ')
+        if(check == 'y'):
+            powerArray = int(end_wv - start_wv + 1) * [0]
+            wvArray = int(end_wv - start_wv + 1) * [0]
+            cc = 0
+            counter = 0
+            for cc in range(count):
+                counter +=1
+                j=0
+                fileName = open('C:\\Users\\User\\Desktop\\Power Measurement Files\\' + str(title) + '_'  + str(counter) + '_' + str(start_wv) + '-' + str(end_wv) + '_@' + '%.3f' % filterEE(dbm) + 'dBm.txt', "r")
+                for line in fileName:
+                    
+                    line = line.split(' nm, ')
+
+                    powerArray[j] += float(line[1])
+                    wvArray[j] = float(line[0])
+                    j+=1
+                
+                fileName.close()
+            j = 0
+            output = open('C:\\Users\\User\\Desktop\\Power Measurement Files\\' + str(title) + '_' + 'OutputAverage' + '_' + str(start_wv) + '-' + str(end_wv) + '_@' +'%.3f' % filterEE(dbm) + 'dBm.txt', "w")
+            for j in range(len(powerArray)):
+                powerArray[j] =powerArray[j] / counter
+                output.write(str(wvArray[j]) + ' ' + str(powerArray[j]) + '\n' )
+            
+            output.close()
+           
+            
+            plt.plot(wvArray, powerArray)
+            plt.show()
+            
+                
+        if(check == 'n'):
+           print ('Finished!')
+          
+        ######################################################
+
+        
 main([''])
 if lwmOn: lwm.close()
