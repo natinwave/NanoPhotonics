@@ -10,12 +10,13 @@ from matplotlib.ticker import LinearLocator, FormatStrFormatter
 lwmOn = False
 rm = visa.ResourceManager()
 resources = rm.list_resources()
+
 try:
     lwm = rm.open_resource("TCPIP0::10.4.27.204::inst0::INSTR")
     lwmOn = True
 except:
     lwmOn = False
-    print "Please connect Lightwave Multimeter to the LAN network and try again."
+    print "Please connect Lightwave Multimeter to the LAN network and try again, or restart the device."
 def laserOnOff(lOn):
     status = lOn[0]
     if(status != '1' and status != '0'):
@@ -144,29 +145,31 @@ def runMultipleTimes():
  
 
 def main(paramList):
-    
-    inp = '*IDN?'
-    typ = 'q'
-    lwm.timeout = None
-    while(inp != ''):
-        
-        if (typ == 'q'):
-            print lwm.query(inp)
-        elif (typ == 'w'):
-            print lwm.write(inp)
-        elif (typ == 'r'):
-            print lwm.read()
-        last = inp
-        inp = raw_input('command: ').strip()
-        typ = raw_input('type (q/w/r): ').strip()
-        if inp == '_':
-            inp = last
+    lwm.timeout = 13000 # Timeout set to 13 seconds
+
+    ############# For debugging and testing purposes ###########
+    #inp = '*IDN?'
+    #typ = 'q'
+    #while(inp != ''):  
+    #    
+    #    if (typ == 'q'):
+    #        print lwm.query(inp)
+    #    elif (typ == 'w'):
+    #        print lwm.write(inp)
+    #    elif (typ == 'r'):
+    #        print lwm.read()
+    #    last = inp
+    #    inp = raw_input('command: ').strip()
+    #    typ = raw_input('type (q/w/r): ').strip()
+    #    if inp == '_':
+    #        inp = last
 
     #Show current laser parameters
     step_time = start_wv = end_wv = freq = dbm = mw = wl = wv_step = 0
     title = 'Unknown'
     count = 1
-
+    step_time = 1 #default step time
+    
     while(True):
         lwm.write('sour2:pow:unit 0')
         dbm = lwm.query('sour2:pow?').strip()
@@ -182,13 +185,13 @@ def main(paramList):
         sleep(.1)
         end_wv = str(filterEE(lwm.query("sour2:wav:swe:stop?").strip())*1000000000)
         sleep(.1)
-        step_time = 1 #default step time
         
         
         sleep(.1)
         wv_step = str(filterEE(lwm.query("sour2:wav:swe:step?").strip())*1000000000)
 
-        print "\nCURRENT LIGHTWAVE MULTIMETER PARAMETERS: "
+        print "\n--------------------------------------------------------\n"
+        print "CURRENT LIGHTWAVE MULTIMETER PARAMETERS: "
         print "Power: " + dbm + "dBm / " + mw + " mW"
         print "Wavelength: " + wl + " nm"
         #print "Frequency: " + freq + " THz \n"
@@ -246,6 +249,8 @@ def main(paramList):
         wv_step = float(wv_step)
         end_wv = float(end_wv)
         wlList = []
+        wvArray = []
+        powerArray = []
         #total = start_time = end_time = 0
         #wl_change = hit = False
         interval_timer = average = total_valid = count_valid = 0
@@ -277,7 +282,9 @@ def main(paramList):
             measurement = str(num[0])
 
             measurement = filterEE(measurement)
-            plt.scatter(start_wv + wv_step * i, measurement, c='blue', alpha='.5')
+            wvArray.append(start_wv + wv_step * i)
+            powerArray.append(measurement)
+            #plt.scatter(start_wv + wv_step * i, measurement, c='blue', alpha='.5')
             if file_save == "y":
                 powerFile.write(str(start_wv + wv_step * i) + ' nm, ' + str(measurement) + '\n')
             
@@ -292,6 +299,7 @@ def main(paramList):
         plt.grid(True)
         if lwmOn: lwm.close()
         print "Finished!"
+        plt.plot(wvArray, powerArray)
         plt.show()
         plt.close()
     if count != 1:
@@ -332,8 +340,9 @@ def main(paramList):
                 print wavelength
                 lwm.write('sour2:wav ' + str(wavelength) + 'NM')
                 lwm.write('sens1:pow:wav ' + str(wavelength) + 'NM')
-                sleep(step_time)
+                sleep(step_time * .75)
                 num = lwm.query_ascii_values('fetch1:pow?')
+                sleep(step_time * .25)
                 wavelength += wv_step     
         
                 measurement = str(num[0])
@@ -365,7 +374,7 @@ def main(paramList):
             output = open('C:\\Users\\User\\Desktop\\Power Measurement Files\\' + str(title) + '_' + 'OutputAverage' + '_' + str(start_wv) + '-' + str(end_wv) + '_@' +'%.3f' % filterEE(dbm) + 'dBm.txt', "w")
             for j in range(len(powerArray)):
                 powerArray[j] =powerArray[j] / counter
-                output.write(str(wvArray[j]) + ' ' + str(powerArray[j]) + '\n' )
+                output.write(str(wvArray[j]) + ' nm,' + str(powerArray[j]) + '\n' )
             
             output.close()
            

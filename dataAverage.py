@@ -79,9 +79,9 @@ def main(fileNameList):
 
     #print powerArray
 
-    #plt.plot(wvArray, powerArray)
+    plt.plot(wvArray, powerArray)
     output.close()
-    #plt.show()
+    plt.show()
     return
 
 main([])
