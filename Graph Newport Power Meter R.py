@@ -1,4 +1,5 @@
 import visa
+import sys, select, os
 from time import sleep
 from time import time
 from math import*
@@ -8,7 +9,8 @@ from matplotlib.ticker import LinearLocator, FormatStrFormatter
 
 rm = visa.ResourceManager()
 resources = rm.list_resources()
-opmOn = True
+global opmrOn
+opmrOn = True
 if 'GPIB0::4::INSTR' in resources:
     opmr = rm.open_resource('GPIB0::4::INSTR')
 elif 'GPIB::4::INSTR' in resources:
@@ -16,8 +18,8 @@ elif 'GPIB::4::INSTR' in resources:
 else:
     print "Please make sure the newport power meter is plugged in via GPIB and its address is set to '4.'"
     sleep(4)
-    opmOn = False
-
+    opmrOn = False
+'''
 aqOn = True
 if 'GPIB0::20::INSTR' in resources:
     aq = rm.open_resource('GPIB0::20::INSTR')
@@ -28,6 +30,37 @@ elif 'ASRL1::INSTR' in resources:
 else:
     print "To get data that relates amplitude to frequency, please make sure the AQ4321A is plugged in via GPIB and its address is set to '20.'"
     aqOn = False
+'''
+###################################
+def findAddress(query, response, connection, baudrate=None):
+        print rm.list_resources()
+        for resource in reversed(rm.list_resources()):
+            if connection in resource:
+                temp = rm.open_resource(resource)
+                if baudrate != None: temp.baud_rate = baudrate
+                print resource
+                try:
+                    print temp.query(query)
+                    if (response in temp.query(query)):
+                        temp.close()
+                        return resource
+                    else:
+                        temp.close()
+                except:
+                    temp.close()
+        return ''
+
+def connect():
+    address1 = findAddress('IDN?', 'NEWPORT 1830-R-GPIB v1.5 10/01/14 30094', 'ASRL')
+    
+    if (address1 != ''):
+        global opmrOn, opmr
+        opmrOn = True
+        opmr = rm.open_resource(address1)
+
+        return True
+    return False
+#################################
 
 #validate functions make sure that the input from the user is in the correct bounds for the device, else it will show an error message giving the correct bounds.
 def validateWV(self, wavelength_in):
@@ -117,13 +150,11 @@ def setEndWV():
         aq.write('WAIT0.1')
 
 def main():
-    if not opmOn:
-        return
     #Show current laser parameters
     step_time = start_wv = end_wv = freq = dbm = mw = wl = wv_step = 0
 
-    while(True):
-        if aqOn:
+    if not opmrOn:
+            '''
             dbm = aq.query("TPDB?").strip()
             sleep(.1)
             mw = aq.query("TPMW?").strip()
@@ -168,10 +199,9 @@ def main():
                 setStartWV()
             elif (response == 'ew'):
                 setEndWV()
-        else:
-            print "AQ laser source is not connected."
-            break
-
+            '''
+            print "Newport Power Meter is not connected and turned on."
+    '''
     duration = (float(end_wv) - float(start_wv) + float(wv_step)) * float(step_time) / float(wv_step)
     print "This will scan for: " + str(duration) + " seconds."
 
@@ -216,7 +246,7 @@ def main():
                 wl_change = False
                 interval_timer += 1
             ##############################################################################
-                
+
             ###### Takes out scientific notation ######
             if 'E' in measurement:
                 m_list = measurement.split("E")
@@ -264,18 +294,39 @@ def main():
                 measurement = float(measurement)
             plt.scatter((i / samples), measurement, c='blue')
             end_time = time()
+    '''
+    #print 'Press Enter to stop data acquisition.'
 
-    if file_save == "y":
-        powerFile.close()
-
+    #i = 0
+    #name = raw_input("Name of new data file (leaving blank appends to 'PowerMeasurement.txt'): ").strip()
+    #if name == "":
+    powerFile = open('C:\\Users\\User\\Desktop\\Power Measurement Files\\PowerMeasurement.txt', "a")
+    #else:
+    #    powerFile = open('C:\\Users\\User\\Desktop\\Power Measurement Files\\' + name + '.txt', "w")
+    #while True:
+    measurement = opmr.query('D?')
+    ###### Takes out scientific notation ######
+    if 'E' in measurement:
+        m_list = measurement.split("E")
+        measurement = float(m_list[0]) * (10 ** float(m_list[1]))
+    else:
+        measurement = float(measurement)
+    ###########################################
+    #plt.scatter(wl, measurement, c='green')
+    powerFile.write(str(measurement) + ' W\n')
+    
+    powerFile.close()
+    '''
     plt.xlabel('wavelength (nm)')
     plt.ylabel('amplitude (units on power meter)')
     plt.grid(True)
+    '''
     opmr.close()
-    if aqOn: aq.close()
-    print "Finished!"
+    #if aqOn: aq.close()
+    #print "Finished!"
+    '''
     plt.show()
     plt.close()
-    
+    '''
 
 main()

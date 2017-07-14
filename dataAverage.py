@@ -34,17 +34,18 @@ def main(fileNameList):
             fileCounter += 1
             file = open(fileName, 'r')
             k = 0
-            for line in file:        
-                line = line.split(' nm , ')
-                powerArray[k] += float(line[1])
-                if wvArray[k] != '' and wvArray[k] != line[0]:
+            i = 0
+            for line in file:
+                line = line.split(' nm, ')
+                powerArray.append(float(line[1]))
+                if k != 0 and wvArray[i] != line[0]:
                     print 'All files must have the same wavelength bounds.'
                     sleep(3)
                     return
                 wvArray[k] = float(line[0])
-                k+=1
-         
+                i+=1
             file.close()
+            k+=1
     else:
         while(fileLoad == 0):
             fileName = askopenfilename()
@@ -52,17 +53,18 @@ def main(fileNameList):
             fileCounter += 1
             file = open(fileName, 'r')
             k = 0
-            for line in file:        
-                line = line.split(' nm , ')
-                powerArray[k] += float(line[1])
-                if wvArray[k] != '' and wvArray[k] != line[0]:
+            i = 0
+            for line in file:
+                line = line.split(' nm, ')
+                powerArray.append(float(line[1]))
+                if k != 0 and wvArray[i] != line[0]:
                     print 'All files must have the same wavelength bounds.'
                     sleep(3)
                     return
-                wvArray[k] = float(line[0])
-                k+=1
-         
+                wvArray.append(float(line[0]))
+                i+=1
             file.close()
+            k+=1
             fileLoad = int(raw_input("Enter 0 if you want to add another file, or 1 to average the data "))
 
     j = 0
@@ -72,10 +74,8 @@ def main(fileNameList):
     output = open(outputFile + 'dBm[Averaged].txt', 'w')
 
     for j in range(len(powerArray)):
-        
         powerArray[j] = powerArray[j] / fileCounter
         output.append(str(wvArray[j]) + ' nm, ' + str(powerArray[j]) + '\n')
-
 
     #print powerArray
 

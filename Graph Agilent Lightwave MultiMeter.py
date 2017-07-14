@@ -265,8 +265,8 @@ def main(paramList):
         
 
         print "\nRunning sweep."
-        lwm.write('source2:chan1:pow:state 1')
-        lwm.write('source2:pow:state 1')
+        lwm.write('source2:chan1:pow:state 0')
+        lwm.write('source2:pow:state 0')
         lwm.write('sour2:wav ' + str(wavelength) + 'NM')
         lwm.write('sens1:pow:wav ' + str(wavelength) + 'NM')
         sleep(5)
@@ -286,7 +286,7 @@ def main(paramList):
             powerArray.append(measurement)
             #plt.scatter(start_wv + wv_step * i, measurement, c='blue', alpha='.5')
             if file_save == "y":
-                powerFile.write(str(start_wv + wv_step * i) + ' nm, ' + str(measurement) + '\n')
+                powerFile.write(str(start_wv + wv_step * i) + ', ' + str(measurement) + '\n')
             
         ######################################################
 
@@ -348,7 +348,7 @@ def main(paramList):
                 measurement = str(num[0])
 
                 measurement = filterEE(measurement)
-                powerFile.write(str(start_wv + wv_step * k) + ' nm, ' + str(measurement) + '\n')
+                powerFile.write(str(start_wv + wv_step * k) + ', ' + str(measurement) + '\n')
             counter +=1
             powerFile.close()
         check = raw_input('Would you like to average the files? y/n ')
@@ -374,7 +374,7 @@ def main(paramList):
             output = open('C:\\Users\\User\\Desktop\\Power Measurement Files\\' + str(title) + '_' + 'OutputAverage' + '_' + str(start_wv) + '-' + str(end_wv) + '_@' +'%.3f' % filterEE(dbm) + 'dBm.txt', "w")
             for j in range(len(powerArray)):
                 powerArray[j] =powerArray[j] / counter
-                output.write(str(wvArray[j]) + ' nm,' + str(powerArray[j]) + '\n' )
+                output.write(str(wvArray[j]) + ',' + str(powerArray[j]) + '\n' )
             
             output.close()
            

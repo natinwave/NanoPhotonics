@@ -8,9 +8,9 @@ def main():
     file = open(filename, 'r')
 
     # converts dBm to mW
-    input_power = .01 * math.pow(10, .1 * float(filename.split('@')[1].split('dBm.txt')[0]))
+    input_power = float(filename.split('@')[1].split('dBm.txt')[0])
 
-    output = open(filename.split('/')[-1].split('.txt')[0] + '[Transmission_Ratio].txt', 'w')
+    output = open('C:\\Users\\User\\Desktop\\Power Measurement Files\\' + filename.split('/')[-1].split('.txt')[0] + '[Transmission_Ratio].txt', 'w')
 
     for line in file:
         line = line.split(', ')
